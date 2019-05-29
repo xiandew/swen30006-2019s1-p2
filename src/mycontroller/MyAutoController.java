@@ -1,6 +1,7 @@
 package mycontroller;
 
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.HashMap;
 
 import controller.CarController;
@@ -9,25 +10,42 @@ import tiles.MapTile;
 import utilities.Coordinate;
 import world.Car;
 import world.WorldSpatial;
+import world.WorldSpatial.Direction;
+import world.WorldSpatial.RelativeDirection;
 
 public class MyAutoController extends CarController{
-	
-	// How many minimum units the wall or lava is away from the player.
-	private int hazardSensitivity = Car.VIEW_SQUARE;
-	
-	// This is set to true when the car can see a wall or lava aside.
-	protected boolean isHazardAside = false;
 	
 	// Car Speed to move at
 	protected final int CAR_MAX_SPEED = 1;
 	
-	protected HashMap<Coordinate, MapTile> viewedTiles;
+	// How many minimum units the wall or lava is away from the player.
+	protected int hazardSensitivity = 1;
+	
+	// This is set to true when the car can see a wall or lava aside.
+	protected boolean isHazardAside = false;
+	
+	protected ArrayList<Coordinate> tempPath = new ArrayList<>();
+	
+	protected HashMap<Coordinate, MapTile> viewedTiles = new HashMap<>();
 	
 	private IDrivingStrategy drivingStrategy;
 	
+	
+	protected Coordinate[] directionDeltas = new Coordinate[] {
+			new Coordinate( 0,  1),
+			new Coordinate( 1,  0),
+			new Coordinate( 0, -1),
+			new Coordinate(-1,  0)
+	};
+	protected Direction[] directions = new Direction[] {
+			Direction.NORTH,
+			Direction.EAST,
+			Direction.SOUTH,
+			Direction.WEST
+	};
+	
 	public MyAutoController(Car car) {
 		super(car);
-		viewedTiles = new HashMap<>();
 		drivingStrategy = DrivingStrategyFactory.getInstance().getDrivingStrategy(Simulation.toConserve());
 	}
 	
@@ -42,19 +60,9 @@ public class MyAutoController extends CarController{
 	 * @param currentView what the car can currently see
 	 * @return
 	 */
-	public boolean checkAhead(MapTile.Type toCheck, WorldSpatial.Direction orientation, HashMap<Coordinate, MapTile> currentView){
-		switch(orientation){
-		case EAST:
-			return checkEast(toCheck, currentView);
-		case NORTH:
-			return checkNorth(toCheck, currentView);
-		case SOUTH:
-			return checkSouth(toCheck, currentView);
-		case WEST:
-			return checkWest(toCheck, currentView);
-		default:
-			return false;
-		}
+	public boolean checkHazard(MapTile.Type[] toCheck, HashMap<Coordinate, MapTile> currentView){
+		Direction orientation = getOrientation();
+		return checkHazard(orientation, toCheck, currentView);
 	}
 	
 	/**
@@ -63,79 +71,101 @@ public class MyAutoController extends CarController{
 	 * @param currentView
 	 * @return
 	 */
-	public boolean checkFollowingWall(WorldSpatial.Direction orientation, HashMap<Coordinate, MapTile> currentView) {
-		
-		switch(orientation){
-		case EAST:
-			return checkNorth(MapTile.Type.WALL, currentView);
-		case NORTH:
-			return checkWest(MapTile.Type.WALL, currentView);
-		case SOUTH:
-			return checkEast(MapTile.Type.WALL, currentView);
-		case WEST:
-			return checkSouth(MapTile.Type.WALL, currentView);
-		default:
-			return false;
-		}	
+	public boolean checkHazard(RelativeDirection r, MapTile.Type[] toCheck, HashMap<Coordinate, MapTile> currentView) {
+		Direction orientation = WorldSpatial.changeDirection(getOrientation(), r);
+		return checkHazard(orientation, toCheck, currentView);
 	}
 	
 	/**
 	 * Method below just iterates through the list and check in the correct coordinates.
 	 * i.e. Given your current position is 10,10
-	 * checkEast will check up to wallSensitivity amount of tiles to the right.
-	 * checkWest will check up to wallSensitivity amount of tiles to the left.
-	 * checkNorth will check up to wallSensitivity amount of tiles to the top.
-	 * checkSouth will check up to wallSensitivity amount of tiles below.
+	 * checkOrientation will check up to wallSensitivity amount of tiles to the given orientation
 	 */
-	public boolean checkEast(MapTile.Type toCheck, HashMap<Coordinate, MapTile> currentView){
+	public boolean checkHazard(Direction orientation, MapTile.Type[] toCheck, HashMap<Coordinate, MapTile> currentView){
+		Coordinate dd = directionDelta(orientation);
+		
 		// Check tiles to my right
 		Coordinate currentPosition = new Coordinate(getPosition());
 		for(int i = 0; i <= hazardSensitivity; i++){
-			MapTile tile = currentView.get(new Coordinate(currentPosition.x+i, currentPosition.y));
-			if(tile.isType(toCheck)){
-				return true;
-			}
-		}
-		return false;
-	}
-	
-	public boolean checkWest(MapTile.Type toCheck, HashMap<Coordinate,MapTile> currentView){
-		// Check tiles to my left
-		Coordinate currentPosition = new Coordinate(getPosition());
-		for(int i = 0; i <= hazardSensitivity; i++){
-			MapTile tile = currentView.get(new Coordinate(currentPosition.x-i, currentPosition.y));
-			if(tile.isType(toCheck)){
-				return true;
-			}
-		}
-		return false;
-	}
-	
-	public boolean checkNorth(MapTile.Type toCheck, HashMap<Coordinate,MapTile> currentView){
-		// Check tiles to towards the top
-		Coordinate currentPosition = new Coordinate(getPosition());
-		for(int i = 0; i <= hazardSensitivity; i++){
-			MapTile tile = currentView.get(new Coordinate(currentPosition.x, currentPosition.y+i));
-			if(tile.isType(toCheck)){
-				return true;
-			}
-		}
-		return false;
-	}
-	
-	public boolean checkSouth(MapTile.Type toCheck, HashMap<Coordinate,MapTile> currentView){
-		// Check tiles towards the bottom
-		Coordinate currentPosition = new Coordinate(getPosition());
-		for(int i = 0; i <= hazardSensitivity; i++){
-			MapTile tile = currentView.get(new Coordinate(currentPosition.x, currentPosition.y-i));
-			if(tile.isType(toCheck)){
-				return true;
+			MapTile tile =
+					currentView.get(new Coordinate(currentPosition.x+i*dd.x, currentPosition.y+i*dd.y));
+			for (MapTile.Type t : toCheck) {
+				if(tile.isType(t)){
+					return true;
+				}
 			}
 		}
 		return false;
 	}
 
-	public boolean checkMoreSpace(WorldSpatial.RelativeDirection d) {
-		
+	// check if there is more space on the relative direction beyond current view point
+	public boolean checkMoreSpace(RelativeDirection r) {
+		return checkMoreSpace(WorldSpatial.changeDirection(getOrientation(), r));
+	}
+	
+	public boolean checkMoreSpace(Direction d) {
+		Coordinate dd = directionDelta(d);
+		// North, East
+		if (dd.x + dd.y == 1) {
+			float[] viewRange = getUpperRange(viewedTiles);
+			return
+					(dd.x == 0 || normalise(mapWidth() - 1 - viewRange[0]) == dd.x) &&
+					(dd.y == 0 || normalise(mapHeight() - 1 - viewRange[1]) == dd.y);
+		}
+		// South, West
+		else {
+			float[] viewRange = getLowerRange(viewedTiles);
+			return
+					(dd.x == 0 || normalise(0 - viewRange[0]) == dd.x) &&
+					(dd.y == 0 || normalise(0 - viewRange[1]) == dd.y);
+		}
+	}
+	
+	private float[] getLowerRange(HashMap<Coordinate, MapTile> map) {
+		float mx = mapWidth(), my = mapHeight();
+		for (Coordinate c : map.keySet()) {
+			if (!map.get(c).isType(MapTile.Type.EMPTY)) {
+				if (c.x < mx) {
+					mx = c.x;
+				}
+				if (c.y < my) {
+					my = c.y;
+				}
+			}
+		}
+		return new float[] {mx, my};
+	}
+
+	private float[] getUpperRange(HashMap<Coordinate, MapTile> map) {
+		float mx = 0, my = 0;
+		for (Coordinate c : map.keySet()) {
+			if (!map.get(c).isType(MapTile.Type.EMPTY)) {
+				if (c.x > mx) {
+					mx = c.x;
+				}
+				if (c.y > my) {
+					my = c.y;
+				}
+			}
+		}
+		return new float[] {mx, my};
+	}
+	
+	private float normalise(float n) {
+		return n > 0 ? 1 : n < 0 ? -1 : 0;
+	}
+
+
+	public Coordinate directionDelta(Direction d) {
+		return directionDeltas[Arrays.asList(directions).indexOf(d)];
+	}
+	
+	protected boolean viewedParcels() {
+//		for (MapTile t : controller.viewedTiles.values()) {
+//			if (t.isType(MapTile.Type.TRAP) && ((TrapTile) t).getTrap().equals("parcel")) {
+//				return true;
+//			}
+//		}
+		return false;
 	}
 }
