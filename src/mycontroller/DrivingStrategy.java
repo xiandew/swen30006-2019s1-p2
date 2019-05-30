@@ -5,16 +5,26 @@ import java.util.Arrays;
 import java.util.HashMap;
 import java.util.LinkedList;
 
+import controller.CarController;
 import tiles.MapTile;
 import utilities.Coordinate;
+import world.World;
 import world.WorldSpatial.Direction;
 
 public abstract class DrivingStrategy {
+	protected CarController controller;
+	
 	private Coordinate[] directionDeltas = new Coordinate[] { new Coordinate(0, 1), new Coordinate(1, 0),
 			new Coordinate(0, -1), new Coordinate(-1, 0) };
 	private Direction[] directions = new Direction[] { Direction.NORTH, Direction.EAST, Direction.SOUTH,
 			Direction.WEST };
 
+	
+	public DrivingStrategy(CarController controller) {
+		this.controller = controller;
+	}
+	
+	
 	public Coordinate directionDelta(Direction d) {
 		return directionDeltas[Arrays.asList(directions).indexOf(d)];
 	}
@@ -23,44 +33,32 @@ public abstract class DrivingStrategy {
 		return directions[Arrays.asList(directionDeltas).indexOf(directionDelta)];
 	}
 
-	public Coordinate explore() {
-		return null;
-
-//		// Need speed to turn and progress toward the exit
-//		if (getSpeed() == 0) {
-//			// Tough luck if there's a wall in the way
-//			applyForwardAcceleration();
-//		}
-//		
-//		if (checkMoreSpace(getOrientation())) {
-//			if (!checkHazard(hazards, currentView)) {
-//				return;
-//			}
-//		}
-//		
-//		if (checkMoreSpace(RelativeDirection.RIGHT)) {
-//			// turn right
-//			if (!checkHazard(RelativeDirection.RIGHT, hazards, currentView)) {
-//				turnRight();
-//				return;
-//			}
-//		}
-//		
-//		if (myAutoController.checkMoreSpace(RelativeDirection.LEFT)) {
-//			// turn left
-//			if (!myAutoController.checkHazard(RelativeDirection.LEFT, hazards, currentView)) {
-//				myAutoController.turnLeft();
-//				return;
-//			}
-//		}
-//		
-//		// back the car
-//		myAutoController.viewedTiles.clear();
-//		myAutoController.applyBrake();
-//		myAutoController.applyReverseAcceleration();
+	public Coordinate explore(Coordinate curr, HashMap<Coordinate, MapTile> unviewedTiles) {
+		// the farthest road tile that the car can reach in the current view
+		Coordinate nearest = null;
+		// the distance to the farthest road tile
+		float nearestDistance = 0;
+		
+		for (Coordinate coor : unviewedTiles.keySet()) {
+			MapTile tile = unviewedTiles.get(coor);
+			if (tile.isType(MapTile.Type.WALL)) {
+				continue;
+			}
+			float d = (float) Math.sqrt(Math.pow(coor.x - curr.x, 2) + Math.pow(coor.y - curr.y, 2));
+			if (nearest == null || d < nearestDistance) {
+				nearestDistance = d;
+				nearest = coor;
+			}
+		}
+		
+		return getNextPurposiveMove(curr, nearest, World.getMap());
+	}
+	
+	public Coordinate getNextPurposiveMove(Coordinate start, HashMap<Coordinate, MapTile> map) {
+		return getNextPurposiveMove(start, null, map);
 	}
 
-	public Coordinate getNextMove(Coordinate start, HashMap<Coordinate, MapTile> viewedTiles) {
+	public Coordinate getNextPurposiveMove(Coordinate start, Coordinate goal, HashMap<Coordinate, MapTile> map) {
 
 		HashMap<Coordinate, Coordinate> cameFrom = new HashMap<>();
 		LinkedList<Coordinate> nextToVisit = new LinkedList<>();
@@ -69,45 +67,54 @@ public abstract class DrivingStrategy {
 		nextToVisit.add(start);
 
 		while (!nextToVisit.isEmpty()) {
-			Coordinate cur = nextToVisit.remove();
-			MapTile curTile = viewedTiles.get(cur);
+			Coordinate currPosition = nextToVisit.remove();
+			MapTile currTile = map.get(currPosition);
 
-			if (curTile.isType(MapTile.Type.EMPTY) || explored.contains(cur)) {
+			if (currTile == null || currTile.isType(MapTile.Type.EMPTY) || explored.contains(currPosition)) {
 				continue;
 			}
 
-			if (curTile.isType(MapTile.Type.WALL)) {
-				explored.add(cur);
+			if (currTile.isType(MapTile.Type.WALL)) {
+				explored.add(currPosition);
 				continue;
 			}
 
-			if (utilityTest(curTile)) {
+			if (goalTest(currTile, currPosition, goal)) {
 				// backtrackPath(cur);
-				Coordinate next = cur;
+				Coordinate nextPosition = currPosition;
 
-				System.out.println("dest: " + cur.toString());
-				while (!cur.equals(start)) {
-					next = cur;
-					cur = cameFrom.get(cur);
+				System.out.println("dest: " + currPosition.toString());
+				while (!currPosition.equals(start)) {
+					nextPosition = currPosition;
+					currPosition = cameFrom.get(currPosition);
 				}
 
-				return next;
+				return nextPosition;
 			}
 
 			for (Coordinate dd : directionDeltas) {
-				Coordinate coordinate = new Coordinate(cur.x + dd.x, cur.y + dd.y);
+				Coordinate coordinate = new Coordinate(currPosition.x + dd.x, currPosition.y + dd.y);
 
 				if (explored.contains(coordinate)) {
 					continue;
 				}
-				cameFrom.put(coordinate, cur);
+				cameFrom.put(coordinate, currPosition);
 				nextToVisit.add(coordinate);
 
 			}
-			explored.add(cur);
+			explored.add(currPosition);
 		}
+		
 		return null;
 	}
+	
+	public boolean goalTest(MapTile currTile, Coordinate currPosition, Coordinate goal) {
+		if (goal != null && currPosition.equals(goal)) {
+			return true;
+		}
+		
+		return utilityTest(currTile);
+	}
 
-	public abstract boolean utilityTest(MapTile curTile);
+	public abstract boolean utilityTest(MapTile currTile);
 }

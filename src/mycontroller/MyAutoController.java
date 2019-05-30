@@ -7,13 +7,16 @@ import swen30006.driving.Simulation;
 import tiles.MapTile;
 import utilities.Coordinate;
 import world.Car;
+import world.World;
 import world.WorldSpatial;
 import world.WorldSpatial.Direction;
 import world.WorldSpatial.RelativeDirection;
 
 public class MyAutoController extends CarController {
 
-	protected HashMap<Coordinate, MapTile> viewedTiles;
+	private HashMap<Coordinate, MapTile> viewedTiles;
+	
+	private HashMap<Coordinate, MapTile> unviewedTiles;
 
 	// current coordinate
 	private Coordinate currentCoor;
@@ -32,6 +35,7 @@ public class MyAutoController extends CarController {
 	public MyAutoController(Car car) {
 		super(car);
 		viewedTiles = new HashMap<>();
+		unviewedTiles = new HashMap<>(World.getMap());
 		drivingStrategy = DrivingStrategyFactory.getInstance().getDrivingStrategy(Simulation.toConserve(), this);
 	}
 
@@ -40,18 +44,23 @@ public class MyAutoController extends CarController {
 		currentCoor = new Coordinate(getPosition());
 		currentView = getView();
 		viewedTiles.putAll(currentView);
-
-		if (getSpeed() < CAR_MAX_SPEED) { // Need speed to turn and progress toward the exit
-			if (checkWall(getOrientation())) {
-				applyReverseAcceleration();
-			} else {
-				applyForwardAcceleration(); // Tough luck if there's a wall in the way
+		for (Coordinate coor : currentView.keySet()) {
+			if (unviewedTiles.containsKey(coor)) {
+				unviewedTiles.remove(coor);
 			}
-			return;
 		}
 
-		Coordinate moveTo = drivingStrategy.getNextMove(currentCoor, viewedTiles);
+		if(getSpeed() < CAR_MAX_SPEED){       // Need speed to turn and progress toward the exit
+			applyForwardAcceleration();   // Tough luck if there's a wall in the way
+		}
 
+		// try to move to a goal, which can be either health, parcel or exit
+		Coordinate moveTo = drivingStrategy.getNextPurposiveMove(currentCoor, viewedTiles);
+
+		if (moveTo == null) {
+			moveTo = drivingStrategy.explore(currentCoor, unviewedTiles);
+		}
+		
 		if (!moveTo.equals(currentCoor)) {
 			direct(moveTo);
 		}

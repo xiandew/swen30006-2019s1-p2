@@ -5,22 +5,20 @@ import tiles.MapTile;
 import tiles.TrapTile;
 
 public class HealthConserveStrategy extends DrivingStrategy {
-	public static final float LOW_HEALTH = 100;
-
-	private CarController controller;
+	public static final float LOW_HEALTH = 50;
 
 	public HealthConserveStrategy(CarController controller) {
-		this.controller = controller;
+		super(controller);
 	}
 
-	public boolean utilityTest(MapTile curTile) {
+	public boolean utilityTest(MapTile currTile) {
 		boolean hasEnoughParcels = controller.numParcelsFound() >= controller.numParcels();
 
-		String trap = curTile.isType(MapTile.Type.TRAP) ? ((TrapTile) curTile).getTrap() : "";
+		String trap = currTile.isType(MapTile.Type.TRAP) ? ((TrapTile) currTile).getTrap() : "";
 
 		// when the search path reaches our goal
-		if (( hasEnoughParcels && curTile.isType(MapTile.Type.FINISH)) ||
-			(!hasEnoughParcels && curTile.isType(MapTile.Type.TRAP) && (trap.equals("parcel")))) {
+		if (( hasEnoughParcels && currTile.isType(MapTile.Type.FINISH)) ||
+			(!hasEnoughParcels && currTile.isType(MapTile.Type.TRAP) && (trap.equals("parcel")))) {
 			return true;
 		}
 
