@@ -1,5 +1,6 @@
 package mycontroller;
 
+import controller.CarController;
 import swen30006.driving.Simulation.StrategyMode;
 
 public class DrivingStrategyFactory {
@@ -14,12 +15,12 @@ public class DrivingStrategyFactory {
 		return drvingStrategyFactory;
 	}
 	
-	public IDrivingStrategy getDrivingStrategy(StrategyMode toConserve) {
+	public DrivingStrategy getDrivingStrategy(StrategyMode toConserve, CarController controller) {
 		switch(toConserve) {
 		case FUEL:
-			return new FuelConserveStrategy();
+			return new FuelConserveStrategy(controller);
 		case HEALTH:
-			return new HealthConserveStrategy();
+			return new HealthConserveStrategy(controller);
 		default:
 			return null;
 		}

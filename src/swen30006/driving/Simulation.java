@@ -44,7 +44,7 @@ public class Simulation extends ApplicationAdapter implements InputProcessor {
 	private static final int PLAYER_VIEW = 11;
 	private static boolean gameEnded = false;
 	private static boolean gameWon = false;
-	public static boolean DEBUG_MODE = true;
+	public static boolean DEBUG_MODE = false;
 	private BitmapFont font;
 	
 	public static enum StrategyMode {HEALTH, FUEL};
