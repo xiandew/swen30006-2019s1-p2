@@ -83,7 +83,6 @@ public abstract class DrivingStrategy {
 				// backtrackPath(cur);
 				Coordinate nextPosition = currPosition;
 
-				System.out.println("dest: " + currPosition.toString());
 				while (!currPosition.equals(start)) {
 					nextPosition = currPosition;
 					currPosition = cameFrom.get(currPosition);
@@ -109,6 +108,7 @@ public abstract class DrivingStrategy {
 	}
 	
 	public boolean goalTest(MapTile currTile, Coordinate currPosition, Coordinate goal) {
+		
 		if (goal != null && currPosition.equals(goal)) {
 			return true;
 		}

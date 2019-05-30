@@ -18,7 +18,7 @@ public class HealthConserveStrategy extends DrivingStrategy {
 
 		// when the search path reaches our goal
 		if (( hasEnoughParcels && currTile.isType(MapTile.Type.FINISH)) ||
-			(!hasEnoughParcels && currTile.isType(MapTile.Type.TRAP) && (trap.equals("parcel")))) {
+			(!hasEnoughParcels && trap.equals("parcel"))) {
 			return true;
 		}
 

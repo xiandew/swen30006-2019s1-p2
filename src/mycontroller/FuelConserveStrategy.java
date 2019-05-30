@@ -16,7 +16,7 @@ public class FuelConserveStrategy extends DrivingStrategy {
 		String trap = currTile.isType(MapTile.Type.TRAP) ? ((TrapTile) currTile).getTrap() : "";
 		
 		if (( hasEnoughParcels && currTile.isType(MapTile.Type.FINISH)) ||
-			(!hasEnoughParcels && currTile.isType(MapTile.Type.TRAP) && trap.equals("parcel"))) {
+			(!hasEnoughParcels && trap.equals("parcel"))) {
 			return true;
 		}
 
