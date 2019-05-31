@@ -4,6 +4,8 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashMap;
 import java.util.LinkedList;
+import java.util.Map.Entry;
+import java.util.stream.Collectors;
 
 import controller.CarController;
 import tiles.MapTile;
@@ -35,23 +37,27 @@ public abstract class DrivingStrategy {
 
 	public Coordinate explore(Coordinate curr, HashMap<Coordinate, MapTile> unviewedTiles) {
 		// the farthest road tile that the car can reach in the current view
-		Coordinate nearest = null;
-		// the distance to the farthest road tile
-		float nearestDistance = 0;
+		HashMap<Coordinate, Float> distanceDict = new HashMap<>();
 		
 		for (Coordinate coor : unviewedTiles.keySet()) {
 			MapTile tile = unviewedTiles.get(coor);
-			if (tile.isType(MapTile.Type.WALL)) {
+			if (tile.isType(MapTile.Type.WALL) || tile.isType(MapTile.Type.EMPTY)) {
 				continue;
 			}
-			float d = (float) Math.sqrt(Math.pow(coor.x - curr.x, 2) + Math.pow(coor.y - curr.y, 2));
-			if (nearest == null || d < nearestDistance) {
-				nearestDistance = d;
-				nearest = coor;
-			}
+			// float d = (float) Math.sqrt(Math.pow(coor.x - curr.x, 2) + Math.pow(coor.y - curr.y, 2));
+			float d = Math.abs(coor.x - curr.x) + Math.abs(coor.y - curr.y);
+			distanceDict.put(coor, d);
 		}
 		
-		return getNextPurposiveMove(curr, nearest, World.getMap());
+		ArrayList<Coordinate> coordinates = (ArrayList<Coordinate>) distanceDict.entrySet().stream().sorted(Entry.comparingByValue()).map(e -> e.getKey()).collect(Collectors.toList());
+		
+		for (Coordinate coor : coordinates) {
+			Coordinate moveTo = getNextPurposiveMove(curr, coor, World.getMap());
+			if (moveTo != null) {
+				return moveTo;
+			}
+		}
+		return null;
 	}
 	
 	public Coordinate getNextPurposiveMove(Coordinate start, HashMap<Coordinate, MapTile> map) {
