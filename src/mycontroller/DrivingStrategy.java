@@ -58,6 +58,15 @@ public abstract class DrivingStrategy {
 		return getNextPurposiveMove(start, null, map);
 	}
 
+	/**
+	 *  breadth firsts search for a shortest path to a goal and return the first
+	 *  coordinate of the path
+	 * @param start current location of the car
+	 * @param goal can be either a coordinate, parcels or exit
+	 * @param map the map to be searched
+	 * @return
+	 */
+	
 	public Coordinate getNextPurposiveMove(Coordinate start, Coordinate goal, HashMap<Coordinate, MapTile> map) {
 
 		HashMap<Coordinate, Coordinate> cameFrom = new HashMap<>();
@@ -107,8 +116,16 @@ public abstract class DrivingStrategy {
 		return null;
 	}
 	
+	/**
+	 * test if current location reaches the goal
+	 * @param currTile
+	 * @param currPosition
+	 * @param goal
+	 * @return
+	 */
 	public boolean goalTest(MapTile currTile, Coordinate currPosition, Coordinate goal) {
 		
+		// for explore purpose
 		if (goal != null && currPosition.equals(goal)) {
 			return true;
 		}
