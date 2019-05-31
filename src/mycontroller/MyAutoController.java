@@ -18,11 +18,11 @@ public class MyAutoController extends CarController {
 	
 	private HashMap<Coordinate, MapTile> unviewedTiles;
 
-	// current coordinate
-	private Coordinate currentCoor;
-
 	// current view
 	private HashMap<Coordinate, MapTile> currentView;
+	
+	// current coordinate
+	private Coordinate currentCoor;
 
 	// Car Speed to move at
 	private final int CAR_MAX_SPEED = 1;
@@ -31,6 +31,8 @@ public class MyAutoController extends CarController {
 	private int wallSensitivity = 1;
 
 	private DrivingStrategy drivingStrategy;
+	
+	
 
 	public MyAutoController(Car car) {
 		super(car);
@@ -38,6 +40,8 @@ public class MyAutoController extends CarController {
 		unviewedTiles = new HashMap<>(World.getMap());
 		drivingStrategy = DrivingStrategyFactory.getInstance().getDrivingStrategy(Simulation.toConserve(), this);
 	}
+	
+	
 
 	@Override
 	public void update() {
