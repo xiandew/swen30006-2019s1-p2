@@ -40,8 +40,6 @@ public class MyAutoController extends CarController {
 		unviewedTiles = new HashMap<>(World.getMap());
 		drivingStrategy = DrivingStrategyFactory.getInstance().getDrivingStrategy(Simulation.toConserve(), this);
 	}
-	
-	
 
 	@Override
 	public void update() {
@@ -57,9 +55,17 @@ public class MyAutoController extends CarController {
 		if(getSpeed() < CAR_MAX_SPEED){       // Need speed to turn and progress toward the exit
 			applyForwardAcceleration();   // Tough luck if there's a wall in the way
 		}
-
-		// try to move to a goal, which can be either health, parcel or exit
-		Coordinate moveTo = drivingStrategy.getNextPurposiveMove(currentCoor, viewedTiles);
+		
+		Coordinate moveTo;
+		
+		// if having enough parcels
+		if (numParcelsFound() >= numParcels()) {
+			moveTo = drivingStrategy.getNextMove(currentCoor, World.getMap());
+		} else {
+			// try to move to a goal, which can be either health, parcel or exit
+			// in the viewed area
+			moveTo = drivingStrategy.getNextMove(currentCoor, viewedTiles);
+		}
 
 		if (moveTo == null) {
 			moveTo = drivingStrategy.explore(currentCoor, unviewedTiles);

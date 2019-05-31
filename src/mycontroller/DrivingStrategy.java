@@ -10,6 +10,7 @@ import java.util.stream.Collectors;
 import controller.CarController;
 import tiles.MapTile;
 import utilities.Coordinate;
+import world.Car;
 import world.World;
 import world.WorldSpatial.Direction;
 
@@ -34,9 +35,14 @@ public abstract class DrivingStrategy {
 	public Direction direction(Coordinate directionDelta) {
 		return directions[Arrays.asList(directionDeltas).indexOf(directionDelta)];
 	}
-
+	
+	/**
+	 * explore the map and return the coordinate of the nearest unviewed road tile
+	 * @param curr current position of the car
+	 * @param unviewedTiles
+	 * @return
+	 */
 	public Coordinate explore(Coordinate curr, HashMap<Coordinate, MapTile> unviewedTiles) {
-		// the farthest road tile that the car can reach in the current view
 		HashMap<Coordinate, Float> distanceDict = new HashMap<>();
 		
 		for (Coordinate coor : unviewedTiles.keySet()) {
@@ -51,17 +57,53 @@ public abstract class DrivingStrategy {
 		
 		ArrayList<Coordinate> coordinates = (ArrayList<Coordinate>) distanceDict.entrySet().stream().sorted(Entry.comparingByValue()).map(e -> e.getKey()).collect(Collectors.toList());
 		
+		
+		// get all coordinates which give the same shortest distance 
+		Coordinate dest = null;
 		for (Coordinate coor : coordinates) {
-			Coordinate moveTo = getNextPurposiveMove(curr, coor, World.getMap());
-			if (moveTo != null) {
-				return moveTo;
+			if (getNextMove(curr, coor, World.getMap()) != null) {
+				dest = coor;
+				break;
 			}
 		}
-		return null;
+		final float shortestDist = distanceDict.get(dest);
+		ArrayList<Coordinate> tiedDests = (ArrayList<Coordinate>) coordinates.stream()
+				.filter(coor -> shortestDist == distanceDict.get(coor))
+				.collect(Collectors.toList());
+		
+		// sort the tied destinations by the number of unviewed tiles that they
+		// can give us when reach there
+		tiedDests.sort((a, b) -> getNumUnviewedTiles(b, unviewedTiles) - getNumUnviewedTiles(a, unviewedTiles));
+		Coordinate moveTo = null;
+		for (Coordinate coor : tiedDests) {
+			moveTo = getNextMove(curr, coor, World.getMap());
+			if (moveTo != null) {
+				break;
+			}
+		}
+		
+		return moveTo;
 	}
 	
-	public Coordinate getNextPurposiveMove(Coordinate start, HashMap<Coordinate, MapTile> map) {
-		return getNextPurposiveMove(start, null, map);
+	private int getNumUnviewedTiles(Coordinate coor, HashMap<Coordinate, MapTile> unviewedTiles) {
+		int n = 0;
+		for (int x = coor.x - Car.VIEW_SQUARE; x < coor.x + Car.VIEW_SQUARE; x ++) {
+			for (int y = coor.y - Car.VIEW_SQUARE; y < coor.y + Car.VIEW_SQUARE; y++) {
+				Coordinate newCoor = new Coordinate(x, y);
+				if (unviewedTiles.containsKey(newCoor) && !unviewedTiles.get(newCoor).isType(MapTile.Type.WALL)) {
+					n++;
+				}
+			}
+		}
+		return n;
+	}
+	
+	public Coordinate getNextMove(Coordinate start, HashMap<Coordinate, MapTile> map) {
+		return getNextMove(start, new ArrayList<>(), map);
+	}
+	
+	public Coordinate getNextMove(Coordinate start, Coordinate goal, HashMap<Coordinate, MapTile> map) {
+		return getNextMove(start, new ArrayList<>(Arrays.asList(new Coordinate[] { goal })), map);
 	}
 
 	/**
@@ -72,8 +114,7 @@ public abstract class DrivingStrategy {
 	 * @param map the map to be searched
 	 * @return
 	 */
-	
-	public Coordinate getNextPurposiveMove(Coordinate start, Coordinate goal, HashMap<Coordinate, MapTile> map) {
+	public Coordinate getNextMove(Coordinate start, ArrayList<Coordinate> goals, HashMap<Coordinate, MapTile> map) {
 
 		HashMap<Coordinate, Coordinate> cameFrom = new HashMap<>();
 		LinkedList<Coordinate> nextToVisit = new LinkedList<>();
@@ -94,7 +135,7 @@ public abstract class DrivingStrategy {
 				continue;
 			}
 
-			if (goalTest(currTile, currPosition, goal)) {
+			if (goalTest(currTile, currPosition, goals)) {
 				// backtrackPath(cur);
 				Coordinate nextPosition = currPosition;
 
@@ -129,10 +170,10 @@ public abstract class DrivingStrategy {
 	 * @param goal
 	 * @return
 	 */
-	public boolean goalTest(MapTile currTile, Coordinate currPosition, Coordinate goal) {
+	public boolean goalTest(MapTile currTile, Coordinate currPosition, ArrayList<Coordinate> goals) {
 		
 		// for explore purpose
-		if (goal != null && currPosition.equals(goal)) {
+		if (goals != null && goals.contains(currPosition)) {
 			return true;
 		}
 		
